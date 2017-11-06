@@ -134,30 +134,30 @@ def restore(sess):
                     % (FLAGS.train_dir, checkpoint_path))
             time.sleep(2)
 
-     if FLAGS.pretrained_model:
-        if tf.gfile.IsDirectory(FLAGS.pretrained_model):
-            checkpoint_path = tf.train.latest_checkpoint(FLAGS.pretrained_model)
-        else:
-            checkpoint_path = FLAGS.pretrained_model
-
-        if FLAGS.checkpoint_exclude_scopes is None:
-            FLAGS.checkpoint_exclude_scopes='pyramid'
-        if FLAGS.checkpoint_include_scopes is None:
-            FLAGS.checkpoint_include_scopes='resnet_v1_50'
-
-        vars_to_restore = get_var_list_to_restore()
-        for var in vars_to_restore:
-            print ('restoring ', var.name)
-
-        try:
-           restorer = tf.train.Saver(vars_to_restore)
-           restorer.restore(sess, checkpoint_path)
-           print ('Restored %d(%d) vars from %s' %(
-               len(vars_to_restore), len(tf.global_variables()),
-               checkpoint_path ))
-        except:
-           print ('Checking your params %s' %(checkpoint_path))
-           raise
+    #  if FLAGS.pretrained_model:
+    #     if tf.gfile.IsDirectory(FLAGS.pretrained_model):
+    #         checkpoint_path = tf.train.latest_checkpoint(FLAGS.pretrained_model)
+    #     else:
+    #         checkpoint_path = FLAGS.pretrained_model
+     #
+    #     if FLAGS.checkpoint_exclude_scopes is None:
+    #         FLAGS.checkpoint_exclude_scopes='pyramid'
+    #     if FLAGS.checkpoint_include_scopes is None:
+    #         FLAGS.checkpoint_include_scopes='resnet_v1_50'
+     #
+    #     vars_to_restore = get_var_list_to_restore()
+    #     for var in vars_to_restore:
+    #         print ('restoring ', var.name)
+     #
+    #     try:
+    #        restorer = tf.train.Saver(vars_to_restore)
+    #        restorer.restore(sess, checkpoint_path)
+    #        print ('Restored %d(%d) vars from %s' %(
+    #            len(vars_to_restore), len(tf.global_variables()),
+    #            checkpoint_path ))
+    #     except:
+    #        print ('Checking your params %s' %(checkpoint_path))
+    #        raise
 
 def train():
     """The main function that runs training"""

@@ -21,19 +21,27 @@ _ITEMS_TO_DESCRIPTIONS = {
     'gt_boxes': 'bounding boxes and classes of instances in this image, of shape (N, 5), each entry is (x1, y1, x2, y2)',
 }
 
+def correct_decode_raw(data, dtype):
+ # BUG: THERE WAS A BUG HERE, tf.decode_raw('', tf.float32) returns [0.] tensor not the [] tensor
+ # So we use correct_decode_raw instead of tf.decode_raw
+    result = tf.cond(tf.equal(data, tf.constant("")),
+                      lambda: tf.constant([], dtype=dtype),
+                     lambda: tf.decode_raw(data, dtype))
+
+    return result
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   if split_name not in SPLITS_TO_SIZES:
     raise ValueError('split name %s was not recognized.' % split_name)
-  
+
   if not file_pattern:
     file_pattern = _FILE_PATTERN
   file_pattern = os.path.join(dataset_dir, 'records', file_pattern % split_name)
-  
+
   # Allowing None in the signature so that dataset_factory can use the default.
   if reader is None:
     reader = tf.TFRecordReader
-  
+
   keys_to_features = {
     'image/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
     'image/format': tf.FixedLenFeature((), tf.string, default_value='jpeg'),
@@ -41,34 +49,36 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     'label/format': tf.FixedLenFeature((), tf.string, default_value='png'),
     'image/height': tf.FixedLenFeature((), tf.int64),
     'image/width': tf.FixedLenFeature((), tf.int64),
-    
+
     'label/num_instances': tf.FixedLenFeature((), tf.int64),
     'label/gt_boxes': tf.FixedLenFeature((), tf.string),
     'label/gt_masks': tf.FixedLenFeature((), tf.string),
   }
-  
+
   def _masks_decoder(keys_to_tensors):
-    masks = tf.decode_raw(keys_to_tensors['label/gt_masks'], tf.uint8)
+    # masks = tf.decode_raw(keys_to_tensors['label/gt_masks'], tf.uint8)
+    masks = correct_decode_raw(keys_to_tensors['label/gt_masks'], tf.uint8)
     width = tf.cast(keys_to_tensors['image/width'], tf.int32)
     height = tf.cast(keys_to_tensors['image/height'], tf.int32)
     instances = tf.cast(keys_to_tensors['label/num_instances'], tf.int32)
     mask_shape = tf.stack([instances, height, width])
     return tf.reshape(masks, mask_shape)
-  
+
   def _gt_boxes_decoder(keys_to_tensors):
-    bboxes = tf.decode_raw(keys_to_tensors['label/gt_boxes'], tf.float32)
+    # bboxes = tf.decode_raw(keys_to_tensors['label/gt_boxes'], tf.float32)
+    bboxes = correct_decode_raw(keys_to_tensors['label/gt_boxes'], tf.float32)
     instances = tf.cast(keys_to_tensors['label/num_instances'], tf.int32)
     bboxes_shape = tf.stack([instances, 5])
     return tf.reshape(bboxes, bboxes_shape)
-  
+
   def _width_decoder(keys_to_tensors):
     width = keys_to_tensors['image/width']
     return tf.cast(width, tf.int32)
-  
+
   def _height_decoder(keys_to_tensors):
     height = keys_to_tensors['image/height']
     return tf.cast(height, tf.int32)
-  
+
   items_to_handlers = {
     'image': slim.tfexample_decoder.Image('image/encoded', 'image/format'),
     'label': slim.tfexample_decoder.Image('label/encoded', 'label/format', channels=1),
@@ -78,10 +88,10 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     'width': slim.tfexample_decoder.ItemHandlerCallback(['image/width'], _width_decoder),
     'height': slim.tfexample_decoder.ItemHandlerCallback(['image/height'], _height_decoder),
   }
-  
+
   decoder = slim.tfexample_decoder.TFExampleDecoder(
     keys_to_features, items_to_handlers)
-  
+
   return slim.dataset.Dataset(
     data_sources=file_pattern,
     reader=reader,
@@ -117,17 +127,19 @@ def read(tfrecords_filename):
   ih = tf.cast(features['image/height'], tf.int32)
   iw = tf.cast(features['image/width'], tf.int32)
   num_instances = tf.cast(features['label/num_instances'], tf.int32)
-  image = tf.decode_raw(features['image/encoded'], tf.uint8)
+  # image = tf.decode_raw(features['image/encoded'], tf.uint8)
+  image = correct_decode_raw(features['image/encoded'], tf.uint8)
   imsize = tf.size(image)
   image = tf.cond(tf.equal(imsize, ih * iw), \
           lambda: tf.image.grayscale_to_rgb(tf.reshape(image, (ih, iw, 1))), \
           lambda: tf.reshape(image, (ih, iw, 3)))
 
-  gt_boxes = tf.decode_raw(features['label/gt_boxes'], tf.float32)
+  # gt_boxes = tf.decode_raw(features['label/gt_boxes'], tf.float32)
+  gt_boxes = correct_decode_raw(features['label/gt_boxes'], tf.float32)
   gt_boxes = tf.reshape(gt_boxes, [num_instances, 5])
-  gt_masks = tf.decode_raw(features['label/gt_masks'], tf.uint8)
+  # gt_masks = tf.decode_raw(features['label/gt_masks'], tf.uint8)
+  gt_masks = correct_decode_raw(features['label/gt_masks'], tf.uint8)
   gt_masks = tf.cast(gt_masks, tf.int32)
   gt_masks = tf.reshape(gt_masks, [num_instances, ih, iw])
-  
-  return image, ih, iw, gt_boxes, gt_masks, num_instances, img_id
 
+  return image, ih, iw, gt_boxes, gt_masks, num_instances, img_id

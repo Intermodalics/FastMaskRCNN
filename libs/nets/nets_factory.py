@@ -30,7 +30,7 @@ def get_network(name, image, weight_decay=0.000005, is_training=False):
     if name == 'resnet50':
         with slim.arg_scope(resnet_v1.resnet_arg_scope(weight_decay=weight_decay)):
             logits, end_points = resnet50(image, 1000, is_training=is_training)
-    
+
     if name == 'resnet101':
         with slim.arg_scope(resnet_v1.resnet_arg_scope(weight_decay=weight_decay)):
             logits, end_points = resnet50(image, 1000, is_training=is_training)

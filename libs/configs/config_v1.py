@@ -12,7 +12,7 @@ tf.app.flags.DEFINE_string(
     'Directory where checkpoints and event logs are written to.')
 
 tf.app.flags.DEFINE_string(
-    'pretrained_model', './data/pretrained_models/resnet_v1_50.ckpt',
+    'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/resnet_v1_50.ckpt',
     'Path to pretrained model')
 
 ##########################
@@ -42,7 +42,7 @@ tf.app.flags.DEFINE_string(
     'The name of the train/test/val split.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_dir', 'data/coco/',
+    'dataset_dir', '/share/intermodalics/learnit/public_dataset/coco2014',
     'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_integer(
@@ -189,7 +189,7 @@ tf.app.flags.DEFINE_string(
     'The classes to classify.')
 
 tf.app.flags.DEFINE_integer(
-    'image_min_size', 640,
+    'image_min_size', 160,
     'resize image so that the min edge equals to image_min_size')
 
 #####################

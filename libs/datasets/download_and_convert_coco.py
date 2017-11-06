@@ -85,7 +85,7 @@ def _cat_id_to_real_id(readId):
      64: 59, 65: 60, 67: 61, 70: 62, 72: 63, 73: 64, 74: 65, 75: 66, 76: 67, 77: 68, 78: 69, 79: 70, 80: 71, 81: 72,
      82: 73, 84: 74, 85: 75, 86: 76, 87: 77, 88: 78, 89: 79, 90: 80}
   return cat_id_to_real_id[readId]
-  
+
 
 class ImageReader(object):
   def __init__(self):
@@ -151,17 +151,17 @@ def _to_tfexample(image_data, image_format, label_data, label_format, height, wi
 def _to_tfexample_coco(image_data, image_format, label_data, label_format,
                        height, width,
                        num_instances, gt_boxes, masks):
-  
+
   return tf.train.Example(features=tf.train.Features(feature={
       'image/encoded': _bytes_feature(image_data),
       'image/format': _bytes_feature(image_format),
       'image/height': _int64_feature(height),
       'image/width': _int64_feature(width),
-  
+
       'label/num_instances': _int64_feature(num_instances), # N
       'label/gt_boxes': _bytes_feature(gt_boxes), # of shape (N, 5), (x1, y1, x2, y2, classid)
       'label/gt_masks': _bytes_feature(masks),       # of shape (N, height, width)
-    
+
       'label/encoded': _bytes_feature(label_data),  # deprecated, this is used for pixel-level segmentation
       'label/format': _bytes_feature(label_format),
   }))
@@ -227,9 +227,9 @@ def _get_coco_masks(coco, img_id, height, width, img_name):
   masks = masks.astype(np.uint8)
   mask = mask.astype(np.uint8)
   assert masks.shape[0] == gt_boxes.shape[0], 'Shape Error'
-  
+
   return gt_boxes, masks, mask
-  
+
 
 
 def _add_to_tfrecord(record_dir, image_dir, annotation_dir, split_name):
@@ -239,23 +239,23 @@ def _add_to_tfrecord(record_dir, image_dir, annotation_dir, split_name):
 
   assert split_name in ['train2014', 'val2014', 'valminusminival2014', 'minival2014']
   annFile = os.path.join(annotation_dir, 'instances_%s.json' % (split_name))
-  
+
   coco = COCO(annFile)
 
   cats = coco.loadCats(coco.getCatIds())
   print ('%s has %d images' %(split_name, len(coco.imgs)))
   imgs = [(img_id, coco.imgs[img_id]) for img_id in coco.imgs]
-  
+
   num_shards = int(len(imgs) / 2500)
   num_per_shard = int(math.ceil(len(imgs) / float(num_shards)))
-  
+
   with tf.Graph().as_default(), tf.device('/cpu:0'):
     image_reader = ImageReader()
-    
+
     # encode mask to png_string
     mask_placeholder = tf.placeholder(dtype=tf.uint8)
     encoded_image = tf.image.encode_png(mask_placeholder)
-    
+
     with tf.Session('') as sess:
       for shard_id in range(num_shards):
         record_filename = _get_dataset_filename(record_dir, split_name, shard_id, num_shards)
@@ -268,13 +268,13 @@ def _add_to_tfrecord(record_dir, image_dir, annotation_dir, split_name):
                 sys.stdout.write('\r>> Converting image %d/%d shard %d\n' % (
                   i + 1, len(imgs), shard_id))
                 sys.stdout.flush()
-            
+
             # image id and path
             img_id = imgs[i][0]
             img_name = imgs[i][1]['file_name']
             split = img_name.split('_')[1]
             img_name = os.path.join(image_dir, split, img_name)
-            
+
             if FLAGS.vis:
               im = Image.open(img_name)
               im.save('img.png')
@@ -283,15 +283,15 @@ def _add_to_tfrecord(record_dir, image_dir, annotation_dir, split_name):
               plt.imshow(im)
               # plt.show()
               # plt.close()
-            
+
             # jump over the damaged images
             if str(img_id) == '320612':
               continue
-            
+
             # process anns
             height, width = imgs[i][1]['height'], imgs[i][1]['width']
             gt_boxes, masks, mask = _get_coco_masks(coco, img_id, height, width, img_name)
-            
+
             # read image as RGB numpy
             img = np.array(Image.open(img_name))
             if img.size == height * width:
@@ -305,14 +305,14 @@ def _add_to_tfrecord(record_dir, image_dir, annotation_dir, split_name):
 
             img_raw = img.tostring()
             mask_raw = mask.tostring()
-            
+
             example = _to_tfexample_coco_raw(
               img_id,
               img_raw,
               mask_raw,
               height, width, gt_boxes.shape[0],
               gt_boxes.tostring(), masks.tostring())
-            
+
             tfrecord_writer.write(example.SerializeToString())
   sys.stdout.write('\n')
   sys.stdout.flush()
@@ -328,7 +328,7 @@ def _add_to_tfrecord_trainvalsplit(record_dir, image_dir, annotation_dir, split_
   minival_path = os.path.join(annotation_dir, 'instances_minival2014.json')
   minival2014_url='https://dl.dropboxusercontent.com/s/o43o90bna78omob/instances_minival2014.json.zip?dl=0'
   assert os.path.exists(minival_path), 'need to download %s minival split to %s' %(minival2014_url, minival_path)
-  
+
   import ujson as json
   with open(minival_path, 'r') as f:
       minival = json.load(f)
@@ -344,9 +344,9 @@ def _add_to_tfrecord_trainvalsplit(record_dir, image_dir, annotation_dir, split_
   annFile = os.path.join(annotation_dir, 'instances_val2014.json')
   coco_val = COCO(annFile)
   cats = coco_train.loadCats(coco_train.getCatIds())
-  # imgs = [(img_id, coco_train.imgs[img_id]) for img_id in coco_train.imgs] + \ 
+  # imgs = [(img_id, coco_train.imgs[img_id]) for img_id in coco_train.imgs] + \
   #        [(img_id, coco_val.imgs[img_id]) for img_id in coco_val.imgs]
-  
+
   imgs1 = [(img_id, coco_train.imgs[img_id]) for img_id in coco_train.imgs]
   imgs2 = [(img_id, coco_val.imgs[img_id]) for img_id in coco_val.imgs]
   imgs = imgs1 + imgs2
@@ -358,17 +358,17 @@ def _add_to_tfrecord_trainvalsplit(record_dir, image_dir, annotation_dir, split_
   num_shards = int(np.ceil((len(imgs) + 0.0 - len(minival['images'])) / num_per_shard))
   if split_name == 'minival2014':
     num_shards = int(np.ceil((len(minival['images']) + 0.0) / num_per_shard))
-      
+
   with tf.Graph().as_default(), tf.device('/cpu:0'):
-  
+
     image_reader = ImageReader()
-    
+
     # encode mask to png_string
     mask_placeholder = tf.placeholder(dtype=tf.uint8)
     encoded_image = tf.image.encode_png(mask_placeholder)
-    
+
     with tf.Session('') as sess:
-        
+
         cnt = 0
         shard_id = -1
         for i in range(len(imgs)):
@@ -387,23 +387,23 @@ def _add_to_tfrecord_trainvalsplit(record_dir, image_dir, annotation_dir, split_
                 continue
 
             cnt += 1
-            
+
             if cnt % num_per_shard == 1:
                 shard_id += 1
                 record_filename = _get_dataset_filename(record_dir, split_name, shard_id, num_shards)
                 options = tf.python_io.TFRecordOptions(TFRecordCompressionType.ZLIB)
-                tfrecord_writer = tf.python_io.TFRecordWriter(record_filename, options=options) 
+                tfrecord_writer = tf.python_io.TFRecordWriter(record_filename, options=options)
 
             if cnt % 100 == 1:
                 print ('%d (image_id: %d) of %d, split: %s, shard_id: %d' %(i, img_id, len(imgs), split_name, shard_id))
 
-            
+
             # process anns
             height, width = imgs[i][1]['height'], imgs[i][1]['width']
             coco = coco_train if i < num_of_train else coco_val
 
             gt_boxes, masks, mask = _get_coco_masks(coco, img_id, height, width, img_name)
-            
+
             # read image as RGB numpy
             img = np.array(Image.open(img_name))
             if img.size == height * width:
@@ -417,14 +417,14 @@ def _add_to_tfrecord_trainvalsplit(record_dir, image_dir, annotation_dir, split_
 
             img_raw = img.tostring()
             mask_raw = mask.tostring()
-            
+
             example = _to_tfexample_coco_raw(
               img_id,
               img_raw,
               mask_raw,
               height, width, gt_boxes.shape[0],
               gt_boxes.tostring(), masks.tostring())
-            
+
             tfrecord_writer.write(example.SerializeToString())
 
             if cnt % num_per_shard == 0 or i == len(imgs)-1:
@@ -462,5 +462,5 @@ def run(dataset_dir, dataset_split_name='train2014'):
                         dataset_dir,
                         annotation_dir,
                         dataset_split_name)
-  
+
   print('\nFinished converting the coco dataset!')

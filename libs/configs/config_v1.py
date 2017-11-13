@@ -271,11 +271,11 @@ tf.app.flags.DEFINE_integer(
     'Number of rpn anchors that should be sampled before nms')
 
 tf.app.flags.DEFINE_integer(
-    'post_nms_top_n', 2000,
+    'post_nms_top_n', 10,
     'Number of rpn anchors that should be sampled after nms')
 
 tf.app.flags.DEFINE_float(
-    'rpn_nms_threshold', 0.7,
+    'rpn_nms_threshold', 0.2,
     'NMS threshold')
 
 ##################################
@@ -287,7 +287,7 @@ tf.app.flags.DEFINE_boolean(
     'Allow to add bg masks in the masking stage')
 
 tf.app.flags.DEFINE_float(
-    'mask_threshold', 0.50,
+    'mask_threshold', 0.20,
     'Least intersection of a positive mask')
 tf.app.flags.DEFINE_integer(
     'masks_per_image', 64,

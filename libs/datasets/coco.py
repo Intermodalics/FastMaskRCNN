@@ -120,7 +120,7 @@ def read(tfrecords_filename):
       'label/num_instances': tf.FixedLenFeature([], tf.int64),
       'label/gt_masks': tf.FixedLenFeature([], tf.string),
       'label/gt_boxes': tf.FixedLenFeature([], tf.string),
-      'label/encoded': tf.FixedLenFeature([], tf.string),
+    #   'label/encoded': tf.FixedLenFeature([], tf.string),
       })
   # image = tf.image.decode_jpeg(features['image/encoded'], channels=3)
   img_id = tf.cast(features['image/img_id'], tf.int32)

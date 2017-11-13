@@ -77,10 +77,11 @@ def draw_mask(step, image, name='', image_height=1, image_width=1, bbox=None, ma
     color_intermediate = '#eef442'
     color_background = '#4af441'
     color_mismatch = '#ff0000'
+    mask_color_id = 0
     if bbox is not None:
         for i, box in enumerate(bbox):
             if label is not None:
-                mask_color_id = np.random.randint(15)
+                # mask_color_id = np.random.randint(15)
                 box1 = np.floor(box).astype('uint16')
                 box_w = box1[2]-box1[0]
                 box_h = box1[3]-box1[1]
@@ -95,25 +96,27 @@ def draw_mask(step, image, name='', image_height=1, image_width=1, bbox=None, ma
                                 color = color_mismatch
                             else:
                                 color = color_good
-                                if mask is not None:
-                                    m = np.array(mask * 255.0)
-                                    m = np.transpose(m,(0,3,1,2))
-
-                                    color_img = color_id_to_color_code(mask_color_id) * np.ones((box_h,box_w,1)) * 255
-                                    color_img = Image.fromarray(color_img.astype('uint8')).convert('RGBA')
-                                    #color_img = Image.new("RGBA", (bbox_w,bbox_h), np.random.rand(1,3) * 255 )
-                                    # print(bbox_w, bbox_h, i, label[i], bbox.shape)
-                                    resized_m = imresize(m[i][label[i]], [box_h, box_w], interp='bilinear') #label[i]
-                                    resized_m[resized_m >= 128] = 128
-                                    resized_m[resized_m < 128] = 0
-                                    resized_m = Image.fromarray(resized_m.astype('uint8'), 'L')
-                                    #print(box1)
-                                    #print(resized_m)
-
-                                    source_img.paste(color_img , (box1[0], box1[1]), mask=resized_m)
-                                    #color = '#0000ff'
                         else:
-                            color = color_mismatch
+                            color = color_good
+                        if mask is not None:
+                            m = np.array(mask * 255.0)
+                            m = np.transpose(m,(0,3,1,2))
+                            mask_color_id += 1
+                            print mask_color_id
+                            color_img = color_id_to_color_code(mask_color_id) * np.ones((box_h,box_w,1)) * 255
+                            color_img = Image.fromarray(color_img.astype('uint8')).convert('RGBA')
+                            # color_img = Image.fromarray(color_img.astype('uint8'))
+                            #color_img = Image.new("RGBA", (bbox_w,bbox_h), np.random.rand(1,3) * 255 )
+                            # print(bbox_w, bbox_h, i, label[i], bbox.shape)
+                            resized_m = imresize(m[i][label[i]], [box_h, box_w], interp='bilinear') #label[i]
+                            resized_m[resized_m >= 128] = 128
+                            resized_m[resized_m < 128] = 0
+                            resized_m = Image.fromarray(resized_m.astype('uint8'), 'L')
+                            #print(box1)
+                            #print(resized_m)
+
+                            source_img.paste(color_img , (box1[0], box1[1]), mask=resized_m)
+                            #color = '#0000ff'
                             #text = cat_id_to_cls_name(label[i])
                         #draw.text((2+bbox[i,0], 2+bbox[i,1]), text, fill=color)
                         #if _DEBUG is True:
@@ -126,11 +129,12 @@ def draw_mask(step, image, name='', image_height=1, image_width=1, bbox=None, ma
                             color = color_background
                         #if _DEBUG is True:
                         #    print("skip",label[i], prob[i,label[i]])
-                    print("plot",label[i], prob[i,label[i]])
+                    # print("plot",label[i], prob[i,label[i]])
                 else:
                     color = color_good
                     if mask is not None:
                         m = np.array(mask * 255.0)
+                        mask_color_id += 1
                         color_img = color_id_to_color_code(mask_color_id) * np.ones((box_h,box_w,1)) * 255
                         color_img = Image.fromarray(color_img.astype('uint8')).convert('RGBA')
                         #return img[starty:starty+cropy,startx:startx+cropx]
@@ -142,8 +146,8 @@ def draw_mask(step, image, name='', image_height=1, image_width=1, bbox=None, ma
                         source_img.paste(color_img , (box1[0], box1[1]), mask=resized_m)
                     #text = cat_id_to_cls_name(label[i])
                     #draw.text((2+bbox[i,0], 2+bbox[i,1]), text, fill=color)
-                if (color != color_background):
-                    draw.rectangle(box,fill=None,outline=color)    
+                if (color == color_good):
+                    draw.rectangle(box,fill=None,outline=color)
     return source_img, source_img.save(FLAGS.train_dir + '/est_imgs/test_' + name + '_' +  str(step) +'.jpg', 'JPEG')
 
 def cat_id_to_cls_name(catId):
@@ -164,19 +168,19 @@ def cat_id_to_cls_name(catId):
     return cls_name[catId]
 
 def color_id_to_color_code(colorId):
-    color_code = np.array([[178, 31, 53],
+    color_code = np.array([[0, 169, 252],
+                           [178, 31, 53],
                            [216, 39, 53],
-                           [255, 116, 53],
-                           [255, 161, 53],
-                           [255, 203, 53],
+                           [104, 30, 126],
+                           [125, 60, 181],
                            [255, 255, 53],
                            [0, 117, 58],
                            [0, 158, 71],
                            [22, 221, 53],
+                           [255, 116, 53],
                            [0, 82, 165],
                            [0, 121, 231],
-                           [0, 169, 252],
-                           [104, 30, 126],
-                           [125, 60, 181],
+                           [255, 161, 53],
+                           [255, 203, 53],
                            [189, 122, 246]])
     return color_code[colorId]

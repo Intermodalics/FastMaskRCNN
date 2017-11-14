@@ -34,7 +34,19 @@ _networks_map = {
   'resnet101': {'C1': '', 'C2': '',
                 'C3': '', 'C4': '',
                 'C5': '',
-               }
+               },
+  'vgg16': {'C1': 'vgg_16/conv1/conv1_2',
+            'C2': 'vgg_16/conv2/conv2_2',
+            'C3': 'vgg_16/conv3/conv3_3',
+            'C4': 'vgg_16/conv4/conv4_3',
+            'C5': 'vgg_16/conv5/conv5_3',
+            },
+  'mobilenet': {'C1': 'Conv2d_0',
+              'C2': 'Conv2d_1_pointwise',
+              'C3': 'Conv2d_5_pointwise',
+              'C4': 'Conv2d_9_pointwise',
+              'C5': 'Conv2d_13_pointwise',
+              }
 }
 
 def _extra_conv_arg_scope_with_bn(weight_decay=0.00001,
@@ -171,7 +183,6 @@ def build_pyramid(net_name, end_points, bilinear=True):
   arg_scope = _extra_conv_arg_scope_with_bn()
   with tf.variable_scope('pyramid'):
     with slim.arg_scope(arg_scope):
-
       pyramid['P5'] = \
         slim.conv2d(end_points[pyramid_map['C5']], 256, [1, 1], stride=1, scope='C5')
 

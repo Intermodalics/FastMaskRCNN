@@ -12,14 +12,21 @@ tf.app.flags.DEFINE_string(
     'Directory where checkpoints and event logs are written to.')
 
 tf.app.flags.DEFINE_string(
-    'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/resnet_v1_50.ckpt',
+    # vgg16
+    'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/vgg_16.ckpt',
+
+    # resnet50
+    # 'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/resnet_v1_50.ckpt',
+
+    # mobileNet
+    # 'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/mobilenet_v1_1.0_224.ckpt.data-00000-of-00001',
     'Path to pretrained model')
 
 ##########################
 #                  network
 ##########################
 tf.app.flags.DEFINE_string(
-    'network', 'resnet50',
+    'network', 'vgg16',
     'name of backbone network')
 
 ##########################
@@ -59,11 +66,11 @@ tf.app.flags.DEFINE_integer(
     'The frequency with which logs are print.')
 
 tf.app.flags.DEFINE_integer(
-    'save_summaries_secs', 60,
+    'save_summaries_secs', 30,
     'The frequency with which summaries are saved, in seconds.')
 
 tf.app.flags.DEFINE_integer(
-    'save_interval_secs', 7200,
+    'save_interval_secs', 60,
     'The frequency with which the model is saved, in seconds.')
 
 tf.app.flags.DEFINE_integer(
@@ -166,7 +173,7 @@ tf.app.flags.DEFINE_float(
 
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'resnet50',
+    'model_name', 'vgg_16',
     'The name of the architecture to train.')
 
 tf.app.flags.DEFINE_string(
@@ -189,7 +196,7 @@ tf.app.flags.DEFINE_string(
     'The classes to classify.')
 
 tf.app.flags.DEFINE_integer(
-    'image_min_size', 160,
+    'image_min_size', 480,
     'resize image so that the min edge equals to image_min_size')
 
 #####################

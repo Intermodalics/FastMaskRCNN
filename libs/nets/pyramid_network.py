@@ -167,6 +167,111 @@ def _add_jittered_boxes(rois, scores, batch_inds, gt_boxes, jitter=0.1):
            tf.concat(values=[scores, new_scores], axis=0), \
            tf.concat(values=[batch_inds, new_batch_inds], axis=0)
 
+
+def build_pyramid_from_two_networks2(net_name_1, end_points_1, net_name_2, end_points_2, bilineaer=True):
+    """build pyramid features from a typical two network,
+    assume each stage is 2 time larger than its top feature
+    Returns:
+      returns several endpoints
+    """
+    pyramid = {}
+    if isinstance(net_name_1, str):
+      pyramid_map_1 = _networks_map[net_name_1]
+    else:
+      pyramid_map_1 = net_name_1
+    if isinstance(net_name_2, str):
+      pyramid_map_2 = _networks_map[net_name_2]
+    else:
+      pyramid_map_2 = net_name_2
+    # pyramid['inputs'] = end_points['inputs']
+    #arg_scope = _extra_conv_arg_scope()
+    arg_scope = _extra_conv_arg_scope_with_bn()
+    with tf.variable_scope('pyramid'):
+      with slim.arg_scope(arg_scope):
+        end_points_c5 = tf.concat([end_points_1[pyramid_map_1['C5']], slim.conv2d(end_points_2[pyramid_map_2['C5']], 256, [1, 1], stride=2, scope='C5/concat')], 3)
+        pyramid['P5'] = slim.conv2d(end_points_c5, 256, [1, 1], stride=1, scope='C5')
+        #   slim.conv2d(end_points[pyramid_map['C5']], 256, [1, 1], stride=1, scope='C5')
+
+        for c in range(4, 1, -1):
+          s_d = pyramid['P%d'%(c+1)]
+          s_1 =  end_points_1[pyramid_map_1['C%d' % (c)]]
+          s_2 =  end_points_2[pyramid_map_2['C%d' % (c)]]
+
+          # s_ = slim.conv2d(s_, 256, [3, 3], stride=1, scope='C%d'%c)
+
+          up_shape_1 = tf.shape(s_1)
+          s_d_1 = tf.image.resize_bilinear(s_d, [up_shape_1[1], up_shape_1[2]], name='C%d/upscale/1'%c)
+          s_1 = slim.conv2d(s_1, 256, [1,1], stride=1, scope='C%d/1'%c)
+          s_a_1 = tf.add(s_d_1, s_1, name='C%d/addition/1'%c)
+          s_a_1 = slim.conv2d(s_a_1, 256, [3,3], stride=1, scope='C%d/fusion/1'%c)
+
+          up_shape_2 = tf.shape(s_2)
+          s_d_2 = tf.image.resize_bilinear(s_d, [up_shape_2[1], up_shape_2[2]], name='C%d/upscale/2'%c)
+          s_2 = slim.conv2d(s_2, 256, [1,1], stride=1, scope='C%d/2'%c)
+          s_a_2 = tf.add(s_d_2, s_2, name='C%d/addition/2'%c)
+          s_a_2 = slim.conv2d(s_a_2, 256, [3,3], stride=1, scope='C%d/fusion/2'%c)
+
+          # out_shape = tf.stack((up_shape[1], up_shape[2]))
+          # s = slim.conv2d(s, 256, [3, 3], stride=1, scope='C%d'%c)
+
+          s = tf.concat([s_a_1, slim.conv2d(s_a_2, 256,  [1,1], stride=2, scope='C%d/concat1'%c)], 3)
+          s = slim.conv2d(s, 256, [1,1], stride=1, scope='C%d/concat2'%c)
+          pyramid['P%d'%(c)] = s
+
+        return pyramid
+
+def build_pyramid_from_two_networks(net_name_1, end_points_1, net_name_2, end_points_2, bilineaer=True):
+    """build pyramid features from a typical two network,
+    assume each stage is 2 time larger than its top feature
+    Returns:
+      returns several endpoints
+    """
+    pyramid = {}
+    if isinstance(net_name_1, str):
+      pyramid_map_1 = _networks_map[net_name_1]
+    else:
+      pyramid_map_1 = net_name_1
+    if isinstance(net_name_2, str):
+      pyramid_map_2 = _networks_map[net_name_2]
+    else:
+      pyramid_map_2 = net_name_2
+    # pyramid['inputs'] = end_points['inputs']
+    #arg_scope = _extra_conv_arg_scope()
+    arg_scope = _extra_conv_arg_scope_with_bn()
+    with tf.variable_scope('pyramid'):
+      with slim.arg_scope(arg_scope):
+        end_points_c5 = tf.concat([end_points_1[pyramid_map_1['C5']], slim.conv2d(end_points_2[pyramid_map_2['C5']], 256, [1, 1], stride=2, scope='C5/concat')], 3)
+        pyramid['P5'] = slim.conv2d(end_points_c5, 256, [1, 1], stride=1, scope='C5')
+        #   slim.conv2d(end_points[pyramid_map['C5']], 256, [1, 1], stride=1, scope='C5')
+
+        for c in range(4, 1, -1):
+          s_d = pyramid['P%d'%(c+1)]
+          s_1 =  end_points_1[pyramid_map_1['C%d' % (c)]]
+          s_2 =  end_points_2[pyramid_map_2['C%d' % (c)]]
+
+          # s_ = slim.conv2d(s_, 256, [3, 3], stride=1, scope='C%d'%c)
+
+          up_shape_1 = tf.shape(s_1)
+          s_d_1 = tf.image.resize_bilinear(s_d, [up_shape_1[1], up_shape_1[2]], name='C%d/upscale/1'%c)
+          s_1 = slim.conv2d(s_1, 256, [1,1], stride=1, scope='C%d/1'%c)
+          s_a_1 = tf.add(s_d_1, s_1, name='C%d/addition/1'%c)
+          s_a_1 = slim.conv2d(s_a_1, 256, [3,3], stride=1, scope='C%d/fusion/1'%c)
+
+          up_shape_2 = tf.shape(s_2)
+          s_d_2 = tf.image.resize_bilinear(s_d, [up_shape_2[1], up_shape_2[2]], name='C%d/upscale/2'%c)
+          s_2 = slim.conv2d(s_2, 256, [1,1], stride=1, scope='C%d/2'%c)
+          s_a_2 = tf.add(s_d_2, s_2, name='C%d/addition/2'%c)
+          s_a_2 = slim.conv2d(s_a_2, 256, [3,3], stride=1, scope='C%d/fusion/2'%c)
+
+          # out_shape = tf.stack((up_shape[1], up_shape[2]))
+          # s = slim.conv2d(s, 256, [3, 3], stride=1, scope='C%d'%c)
+
+          s = tf.concat([s_a_1, slim.conv2d(s_a_2, 256,  [1,1], stride=2, scope='C%d/concat1'%c)], 3)
+          s = slim.conv2d(s, 256, [1,1], stride=1, scope='C%d/concat2'%c)
+          pyramid['P%d'%(c)] = s
+
+        return pyramid
+
 def build_pyramid(net_name, end_points, bilinear=True):
   """build pyramid features from a typical network,
   assume each stage is 2 time larger than its top feature
@@ -232,11 +337,12 @@ def build_heads(pyramid, ih, iw, num_classes, base_anchors, is_training=False, g
           ## rpn head
           shape = tf.shape(pyramid[p])
           height, width = shape[1], shape[2]
-          rpn = slim.conv2d(pyramid[p], 256, [3, 3], stride=1, activation_fn=tf.nn.relu, scope='%s/rpn'%p)
-          box = slim.conv2d(rpn, base_anchors * 4, [1, 1], stride=1, scope='%s/rpn/box' % p, \
-                  weights_initializer=tf.truncated_normal_initializer(stddev=0.001), activation_fn=my_sigmoid)
-          cls = slim.conv2d(rpn, base_anchors * 2, [1, 1], stride=1, scope='%s/rpn/cls' % p, \
-                  weights_initializer=tf.truncated_normal_initializer(stddev=0.01))
+          with tf.device('/device:GPU:1'):
+              rpn = slim.conv2d(pyramid[p], 256, [3, 3], stride=1, activation_fn=tf.nn.relu, scope='%s/rpn'%p)
+              box = slim.conv2d(rpn, base_anchors * 4, [1, 1], stride=1, scope='%s/rpn/box' % p, \
+                      weights_initializer=tf.truncated_normal_initializer(stddev=0.001), activation_fn=my_sigmoid)
+              cls = slim.conv2d(rpn, base_anchors * 2, [1, 1], stride=1, scope='%s/rpn/cls' % p, \
+                      weights_initializer=tf.truncated_normal_initializer(stddev=0.01))
 
           anchor_scales = [2 **(i-2), 2 ** (i-1), 2 **(i)]
           print("anchor_scales = " , anchor_scales)
@@ -245,36 +351,44 @@ def build_heads(pyramid, ih, iw, num_classes, base_anchors, is_training=False, g
 
         ## gather all rois
         # print (outputs['rpn'])
-        rpn_boxes = [tf.reshape(outputs['rpn']['P%d'%p]['box'], [-1, 4]) for p in range(5, 1, -1)]
-        rpn_clses = [tf.reshape(outputs['rpn']['P%d'%p]['cls'], [-1, 1]) for p in range(5, 1, -1)]
-        rpn_anchors = [tf.reshape(outputs['rpn']['P%d'%p]['anchor'], [-1, 4]) for p in range(5, 1, -1)]
-        rpn_boxes = tf.concat(values=rpn_boxes, axis=0)
-        rpn_clses = tf.concat(values=rpn_clses, axis=0)
-        rpn_anchors = tf.concat(values=rpn_anchors, axis=0)
+        with tf.device('/device:GPU:1'):
+            rpn_boxes = [tf.reshape(outputs['rpn']['P%d'%p]['box'], [-1, 4]) for p in range(5, 1, -1)]
+            rpn_clses = [tf.reshape(outputs['rpn']['P%d'%p]['cls'], [-1, 1]) for p in range(5, 1, -1)]
+            rpn_anchors = [tf.reshape(outputs['rpn']['P%d'%p]['anchor'], [-1, 4]) for p in range(5, 1, -1)]
+            rpn_boxes = tf.concat(values=rpn_boxes, axis=0)
+            rpn_clses = tf.concat(values=rpn_clses, axis=0)
+            rpn_anchors = tf.concat(values=rpn_anchors, axis=0)
 
-        outputs['rpn']['box'] = rpn_boxes
-        outputs['rpn']['cls'] = rpn_clses
-        outputs['rpn']['anchor'] = rpn_anchors
-        # outputs['rpn'] = {'box': rpn_boxes, 'cls': rpn_clses, 'anchor': rpn_anchors}
+            outputs['rpn']['box'] = rpn_boxes
+            outputs['rpn']['cls'] = rpn_clses
+            outputs['rpn']['anchor'] = rpn_anchors
+            # outputs['rpn'] = {'box': rpn_boxes, 'cls': rpn_clses, 'anchor': rpn_anchors}
 
-        rpn_probs = tf.nn.softmax(tf.reshape(rpn_clses, [-1, 2]))
+            rpn_probs = tf.nn.softmax(tf.reshape(rpn_clses, [-1, 2]))
+
+
+        #
         rois, roi_clses, scores, = anchor_decoder(rpn_boxes, rpn_probs, rpn_anchors, ih, iw)
-        # rois, scores, batch_inds = sample_rpn_outputs(rois, rpn_probs[:, 1])
-        # if gt_boxes == None:
-        rois, scores, batch_inds = sample_rpn_outputs(rois, rpn_probs[:, 1])
-        # else:
+        # if is_training:
             # rois, scores, batch_inds, mask_rois, mask_scores, mask_batch_inds = \
                 # sample_rpn_outputs_with_gt(rois, rpn_probs[:, 1], gt_boxes, is_training=is_training)
+        # else:
+        rois, scores, batch_inds = sample_rpn_outputs(rois, rpn_probs[:, 1])
+            # rois, scores, batch_inds = sample_rpn_outputs(rois, rpn_probs[:, 1])
+            # if gt_boxes == None:
+            # else:
+                # rois, scores, batch_inds, mask_rois, mask_scores, mask_batch_inds = \
+                    # sample_rpn_outputs_with_gt(rois, rpn_probs[:, 1], gt_boxes, is_training=is_training)
 
-        # if is_training:
-        #     # rois, scores, batch_inds = _add_jittered_boxes(rois, scores, batch_inds, gt_boxes)
-        #     rois, scores, batch_inds = _add_jittered_boxes(rois, scores, batch_inds, gt_boxes, jitter=0.2)
+            # if is_training:
+            #     # rois, scores, batch_inds = _add_jittered_boxes(rois, scores, batch_inds, gt_boxes)
+            #     rois, scores, batch_inds = _add_jittered_boxes(rois, scores, batch_inds, gt_boxes, jitter=0.2)
 
         outputs['roi'] = {'box': rois, 'score': scores}
 
-        ## cropping regions
+            ## cropping regions
         [assigned_rois, assigned_batch_inds, assigned_layer_inds] = \
-                assign_boxes(rois, [rois, batch_inds], [2, 3, 4, 5])
+                    assign_boxes(rois, [rois, batch_inds], [2, 3, 4, 5])
 
         outputs['assigned_rois'] = assigned_rois
         outputs['assigned_layer_inds'] = assigned_layer_inds
@@ -301,30 +415,31 @@ def build_heads(pyramid, ih, iw, num_classes, base_anchors, is_training=False, g
             #     outputs['tmp_3'] = boxes_in_crop
             #     outputs['tmp_4'] = [ih, iw]
 
-        cropped_rois = tf.concat(values=cropped_rois, axis=0)
-        ordered_rois = tf.concat(values=ordered_rois, axis=0)
+        with tf.device('/device:GPU:1'):
+            cropped_rois = tf.concat(values=cropped_rois, axis=0)
+            ordered_rois = tf.concat(values=ordered_rois, axis=0)
 
 
-        outputs['ordered_rois'] = ordered_rois
-        outputs['pyramid_feature'] = pyramid_feature
+            outputs['ordered_rois'] = ordered_rois
+            outputs['pyramid_feature'] = pyramid_feature
 
-        outputs['roi']['cropped_rois'] = cropped_rois
-        tf.add_to_collection('__CROPPED__', cropped_rois)
+            outputs['roi']['cropped_rois'] = cropped_rois
+            tf.add_to_collection('__CROPPED__', cropped_rois)
 
-        ## refine head
-        # to 7 x 7
-        cropped_regions = slim.max_pool2d(cropped_rois, [3, 3], stride=2, padding='SAME')
-        refine = slim.flatten(cropped_regions)
-        refine = slim.fully_connected(refine, 1024, activation_fn=tf.nn.relu)
-        refine = slim.dropout(refine, keep_prob=0.75, is_training=is_training)
-        refine = slim.fully_connected(refine,  1024, activation_fn=tf.nn.relu)
-        refine = slim.dropout(refine, keep_prob=0.75, is_training=is_training)
-        cls2 = slim.fully_connected(refine, num_classes, activation_fn=None,
-                weights_initializer=tf.truncated_normal_initializer(stddev=0.05))
-        box = slim.fully_connected(refine, num_classes*4, activation_fn=my_sigmoid,
-                weights_initializer=tf.truncated_normal_initializer(stddev=0.05))
+            ## refine head
+            # to 7 x 7
+            cropped_regions = slim.max_pool2d(cropped_rois, [3, 3], stride=2, padding='SAME')
+            refine = slim.flatten(cropped_regions)
+            refine = slim.fully_connected(refine, 1024, activation_fn=tf.nn.relu)
+            refine = slim.dropout(refine, keep_prob=0.75, is_training=is_training)
+            refine = slim.fully_connected(refine,  1024, activation_fn=tf.nn.relu)
+            refine = slim.dropout(refine, keep_prob=0.75, is_training=is_training)
+            cls2 = slim.fully_connected(refine, num_classes, activation_fn=None,
+                    weights_initializer=tf.truncated_normal_initializer(stddev=0.05))
+            box = slim.fully_connected(refine, num_classes*4, activation_fn=my_sigmoid,
+                    weights_initializer=tf.truncated_normal_initializer(stddev=0.05))
 
-        outputs['refined'] = {'box': box, 'cls': cls2}
+            outputs['refined'] = {'box': box, 'cls': cls2}
 
         ## decode refine net outputs
         cls2_prob = tf.nn.softmax(cls2)
@@ -480,7 +595,7 @@ def build_losses(pyramid, outputs, gt_boxes, gt_masks,
 
         labels, bbox_targets, bbox_inside_weights = \
           roi_encoder(gt_boxes, ordered_rois, num_classes, scope='ROIEncoder')
-
+        outputs['final_boxes']['gt_cls_nohot'] = labels
         outputs['final_boxes']['gt_cls'] = slim.one_hot_encoding(labels, num_classes, on_value=1.0, off_value=0.0)
         outputs['gt'] = gt_boxes
         labels, classes, boxes, bbox_targets, bbox_inside_weights = \
@@ -580,6 +695,57 @@ def decode_output(outputs):
     """decode outputs into boxes and masks"""
     return [], [], []
 
+def build_from_two_networks(end_points_1, pyramid_map_1, end_points_2, pyramid_map_2,
+                            image_height, image_width,
+                            num_classes,
+                            base_anchors,
+                            is_training,
+                            gt_boxes=None,
+                            gt_masks=None,
+                            loss_weights=[0.5, 0.5, 1.0, 0.5, 0.1]):
+
+    with tf.device('/device:GPU:1'):
+        pyramid = build_pyramid_from_two_networks(pyramid_map_1, end_points_1, pyramid_map_2, end_points_2)
+
+    for p in pyramid:
+        print (p)
+
+    outputs = \
+        build_heads(pyramid, image_height, image_width, num_classes, base_anchors,
+                    is_training=is_training, gt_boxes=gt_boxes)
+
+    if gt_boxes != None:
+        loss, losses, batch_info = build_losses(pyramid, outputs,
+                        gt_boxes, gt_masks,
+                        num_classes=num_classes, base_anchors=base_anchors,
+                        rpn_box_lw=loss_weights[0], rpn_cls_lw=loss_weights[1],
+                        refined_box_lw=loss_weights[2], refined_cls_lw=loss_weights[3],
+                        mask_lw=loss_weights[4])
+
+        outputs['losses'] = losses
+        outputs['total_loss'] = loss
+        outputs['batch_info'] = batch_info
+
+    ## just decode outputs into readable prediction
+    pred_boxes, pred_classes, pred_masks = decode_output(outputs)
+    outputs['pred_boxes'] = pred_boxes
+    outputs['pred_classes'] = pred_classes
+    outputs['pred_masks'] = pred_masks
+
+    # image and gt visualization
+    # visualize_input(gt_boxes, end_points["input"], tf.expand_dims(gt_masks, axis=3))
+
+    # rpn visualization
+    # visualize_bb(end_points["input"], outputs['roi']["box"], name="rpn_bb_visualization")
+
+    # final network visualization
+    first_mask = outputs['mask']['mask'][:1]
+    first_mask = tf.transpose(first_mask, [3, 1, 2, 0])
+
+    visualize_final_predictions(outputs['final_boxes']["box"], end_points_1["input"], first_mask)
+
+    return outputs
+
 def build(end_points, image_height, image_width, pyramid_map,
         num_classes,
         base_anchors,
@@ -588,7 +754,8 @@ def build(end_points, image_height, image_width, pyramid_map,
         gt_masks=None,
         loss_weights=[0.5, 0.5, 1.0, 0.5, 0.1]):
 
-    pyramid = build_pyramid(pyramid_map, end_points)
+    with tf.device('/device:GPU:1'):
+        pyramid = build_pyramid(pyramid_map, end_points)
 
     for p in pyramid:
         print (p)

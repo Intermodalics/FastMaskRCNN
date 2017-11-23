@@ -7,11 +7,11 @@ import numpy as np
 import libs.boxes.cython_bbox as cython_bbox
 import libs.configs.config_v1 as cfg
 from libs.boxes.bbox_transform import bbox_transform, bbox_transform_inv, clip_boxes
-from libs.logs.log import LOG 
+from libs.logs.log import LOG
 
 # FLAGS = tf.app.flags.FLAGS
 
-_DEBUG = False 
+_DEBUG = False
 
 def encode(gt_boxes, rois, num_classes):
   """Matching and Encoding groundtruth boxes (gt_boxes) into learning targets to boxes
@@ -21,17 +21,16 @@ def encode(gt_boxes, rois, num_classes):
   gt_boxes an array of shape (G x 5), [x1, y1, x2, y2, class]
   rois an array of shape (R x 4), [x1, y1, x2, y2]
   num_classes: scalar, number of classes
-  
+
   Returns
   --------
   labels: Nx1 array in [0, num_classes)
   bbox_targets: of shape (N, Kx4) regression targets
   bbox_inside_weights: of shape (N, Kx4), in {0, 1} indicating which class is assigned.
   """
-  
   all_rois = rois
   num_rois = rois.shape[0]
-  if gt_boxes.size > 0: 
+  if gt_boxes.size > 0:
       # R x G matrix
       overlaps = cython_bbox.bbox_overlaps(
         np.ascontiguousarray(all_rois[:, 0:4], dtype=np.float),
@@ -39,36 +38,35 @@ def encode(gt_boxes, rois, num_classes):
       gt_assignment = overlaps.argmax(axis=1)  # R
       # max_overlaps = overlaps.max(axis=1)      # R
       max_overlaps = overlaps[np.arange(rois.shape[0]), gt_assignment]
-      # note: this will assign every rois with a positive label 
+      # note: this will assign every rois with a positive label
       # labels = gt_boxes[gt_assignment, 4]
       labels = np.zeros([num_rois], dtype=np.float32)
       labels[:] = -1
 
       # if _DEBUG:
-      #     print ('gt_assignment')
-      #     print (gt_assignment)
+    #   print ('gt_assignment')
+    #   print (gt_assignment)
 
       # sample rois as to 1:3
       fg_inds = np.where(max_overlaps >= cfg.FLAGS.fg_threshold)[0]
       fg_rois = int(min(fg_inds.size, cfg.FLAGS.rois_per_image * cfg.FLAGS.fg_roi_fraction))
       if fg_inds.size > 0 and fg_rois < fg_inds.size:
         fg_inds = np.random.choice(fg_inds, size=fg_rois, replace=False)
-      labels[fg_inds] = gt_boxes[gt_assignment[fg_inds], 4] 
-      
+      labels[fg_inds] = gt_boxes[gt_assignment[fg_inds], 4]
+
       # TODO: sampling strategy
       bg_inds = np.where((max_overlaps < cfg.FLAGS.bg_threshold))[0]
       bg_rois = max(min(cfg.FLAGS.rois_per_image - fg_rois, fg_rois * 3), 64)
       if bg_inds.size > 0 and bg_rois < bg_inds.size:
         bg_inds = np.random.choice(bg_inds, size=bg_rois, replace=False)
       labels[bg_inds] = 0
-      
-      # ignore rois with overlaps between fg_threshold and bg_threshold 
+
+      # ignore rois with overlaps between fg_threshold and bg_threshold
       ignore_inds = np.where(((max_overlaps > cfg.FLAGS.bg_threshold) &\
               (max_overlaps < cfg.FLAGS.fg_threshold)))[0]
-      labels[ignore_inds] = -1 
-
+      labels[ignore_inds] = -1
       keep_inds = np.append(fg_inds, bg_inds)
-      if _DEBUG: 
+      if _DEBUG:
           print ('keep_inds')
           print (keep_inds)
           print ('fg_inds')
@@ -85,7 +83,7 @@ def encode(gt_boxes, rois, num_classes):
         rois[keep_inds, 0:4], gt_boxes[gt_assignment[keep_inds], :4], labels[keep_inds], num_classes)
       bbox_targets = _unmap(bbox_targets, num_rois, keep_inds, 0)
       bbox_inside_weights = _unmap(bbox_inside_weights, num_rois, keep_inds, 0)
-   
+
   else:
       # there is no gt
       labels = np.zeros((num_rois, ), np.float32)
@@ -95,7 +93,7 @@ def encode(gt_boxes, rois, num_classes):
       if bg_rois < num_rois:
           bg_inds = np.arange(num_rois)
           ignore_inds = np.random.choice(bg_inds, size=num_rois - bg_rois, replace=False)
-          labels[ignore_inds] = -1 
+          labels[ignore_inds] = -1
 
   return labels, bbox_targets, bbox_inside_weights
 
@@ -106,7 +104,7 @@ def decode(boxes, scores, rois, ih, iw):
   boxes: an array of shape (R, Kx4), [x1, y1, x2, y2, x1, x2, y1, y2]
   scores: an array of shape (R, K),
   rois: an array of shape (R, 4), [x1, y1, x2, y2]
-  
+
   Returns
   --------
   final_boxes: of shape (R x 4)
@@ -128,7 +126,7 @@ def _compute_targets(ex_rois, gt_rois, labels, num_classes):
   """
   This function expands those targets into the 4-of-4*K representation used
   by the network (i.e. only one class has non-zero targets).
-  
+
   Returns:
     bbox_target (ndarray): N x 4K blob of regression targets
     bbox_inside_weights (ndarray): N x 4K blob of loss weights
@@ -178,7 +176,7 @@ if __name__ == '__main__':
   labels, rois, bbox_targets, bbox_inside_weights = encode(gt_boxes, rois, num_classes=3)
   print (labels)
   print (bbox_inside_weights)
-  
+
   ls = np.zeros((labels.shape[0], 3))
   for i in range(labels.shape[0]):
     ls[i, labels[i]] = 1

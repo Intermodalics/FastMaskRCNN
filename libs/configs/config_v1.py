@@ -13,10 +13,10 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     # vgg16
-    'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/vgg_16.ckpt',
+    # 'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/vgg_16.ckpt',
 
     # resnet50
-    # 'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/resnet_v1_50.ckpt',
+    'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/resnet_v1_50.ckpt',
 
     # mobileNet
     # 'pretrained_model', '/share/intermodalics/learnit/trained_models/tensorflow/mobilenet_v1_1.0_224.ckpt.data-00000-of-00001',
@@ -26,7 +26,7 @@ tf.app.flags.DEFINE_string(
 #                  network
 ##########################
 tf.app.flags.DEFINE_string(
-    'network', 'vgg16',
+    'network', 'resnet50',
     'name of backbone network')
 
 ##########################
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_integer(
     'The frequency with which the model is saved, in seconds.')
 
 tf.app.flags.DEFINE_integer(
-    'max_iters', 2500000,
+    'max_iters', 400000,
     'max iterations')
 
 ######################
@@ -173,7 +173,7 @@ tf.app.flags.DEFINE_float(
 
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'vgg_16',
+    'model_name', 'resnet50',
     'The name of the architecture to train.')
 
 tf.app.flags.DEFINE_string(
@@ -182,7 +182,7 @@ tf.app.flags.DEFINE_string(
     'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 1,
+    'batch_size', 2,
     'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_integer(
@@ -278,11 +278,11 @@ tf.app.flags.DEFINE_integer(
     'Number of rpn anchors that should be sampled before nms')
 
 tf.app.flags.DEFINE_integer(
-    'post_nms_top_n', 10,
+    'post_nms_top_n', 15, #10, #2000
     'Number of rpn anchors that should be sampled after nms')
 
 tf.app.flags.DEFINE_float(
-    'rpn_nms_threshold', 0.2,
+    'rpn_nms_threshold', 0.3, #0.2, #0.7
     'NMS threshold')
 
 ##################################
